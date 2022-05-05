@@ -1,6 +1,10 @@
-import React from 'react';
+import React, { useCallback, useLayoutEffect } from 'react';
 import styled from 'styled-components';
-import { Data } from '../api';
+import { useRecoilState } from 'recoil';
+import { userState } from '../store';
+import { UserAPI } from '../api/user';
+import { USER_ID } from '../const';
+
 
 const Container = styled.div`
     display: inline-block;
@@ -28,6 +32,21 @@ const Text = styled.div`
 `
 
 export default function Avatar() {
+    const [user, setUser] = useRecoilState(userState);
+
+    // 다시 렌더링될때 함수를 재사용하기 위해 useCallback을 사용함.
+    const fetchData = useCallback(async () => {
+        if (Object.keys(user).length === 0) {
+            const data = await UserAPI.get(USER_ID);
+            setUser(data);
+        }
+    }, [user, setUser]);
+
+
+    useLayoutEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
     const style = {
         width: '50px',
         height: '50px',
@@ -37,8 +56,8 @@ export default function Avatar() {
 
     return (
         <Container width={style.width} height={style.height}>
-            <Image width={style.width} height={style.height} src={Data.user.avatar} alt={Data.user.name} />
-            <Text fontWeight={style.fontWeight}>{Data.user.name}</Text>
+            <Image width={style.width} height={style.height} src={user.avatar} alt={user.name} />
+            <Text fontWeight={style.fontWeight}>{user.name}</Text>
         </Container>
     )
 }

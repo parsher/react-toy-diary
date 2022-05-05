@@ -17,12 +17,12 @@ const Title = styled.div`
     text-align: right;
 `;
 
-export default function ListItem({ id, dateTime, title, style = {} }) {
+export default function ListItem({ id, created, title, style = {} }) {
 
 
     return (
         <Item style={style}>
-            <DateTime dateTime={dateTime} />
+            <DateTime created={created} />
             <Title><StyledLink to={`/detail/${id}`}>{title}</StyledLink></Title>
         </Item>
     )

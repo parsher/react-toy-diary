@@ -15,8 +15,8 @@ const Time = styled.span`
     font-weight: normal;
 `;
 
-export default function DateTime({ dateTime }) {
-    const [date, time] = formatDateTime(dateTime).split('일 ');
+export default function DateTime({ created }) {
+    const [date, time] = formatDateTime(created).split('일 ');
 
     return (
         <DateTimeDiv>

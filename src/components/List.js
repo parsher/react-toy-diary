@@ -1,9 +1,12 @@
-import React, { useState, useLayoutEffect } from "react";
+import React, { useLayoutEffect, useCallback } from "react";
 import styled from "styled-components";
 import Button from "./Button";
 import ListItem from "./ListItem";
 import { HiPlus } from "react-icons/hi";
-import { Data } from "../api";
+import { useRecoilState } from 'recoil';
+import { diaryListState, userState } from '../store';
+import { DiaryAPI } from "../api/diary";
+import { USER_SAVED_LIST_COUNT } from "../const";
 
 const UL = styled.ul`
     padding: 0;
@@ -11,36 +14,35 @@ const UL = styled.ul`
 `
 
 export default function List() {
+    const [diaryList, setDiaryList] = useRecoilState(diaryListState);
+    const [user] = useRecoilState(userState);
 
-    const [showingList, setShowingList] = useState([]);
-    const [endIndex, setEndIndex] = useState(10);
+    // 다시 렌더링될때 함수를 재사용하기 위해 useCallback을 사용함.
+    const fetchData = useCallback(async () => {
+        if (user && user.diaryList && user.diaryList.length > 0) {
+            console.log('user', user);
+            setDiaryList(user.diaryList);
+        }
+    }, [user, setDiaryList]);
 
     useLayoutEffect(() => {
-        setShowingList(Data.list.slice(0, endIndex));
-    }, [endIndex]);
+        fetchData();
+    }, [fetchData]);
 
-    if (!showingList) {
-        return (<div>로딩 중 입니다...</div>);
-    }
-
-    if (showingList.length === 0) {
-        return (<div>데이터가 없습니다.</div>)
-    }
-
-    const onClickMore = () => {
-        setShowingList(showingList.concat(Data.list.slice(endIndex, endIndex + 10)));
-        setEndIndex(endIndex + 10);
+    const onClickMore = async () => {
+        const allList = await DiaryAPI.getList();
+        setDiaryList(allList.slice(0, diaryList.length + USER_SAVED_LIST_COUNT));
     };
 
     return (
         <div>
             <UL>
                 {
-                    showingList.map((item) => (
+                    diaryList.map((item) => (
                         <ListItem
                             id={item.id}
                             key={item.id}
-                            dateTime={item.dateTime}
+                            created={item.created}
                             title={item.title}
                             style={{
                                 maxWidth: "100%",

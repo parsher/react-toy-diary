@@ -3,11 +3,18 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import reportWebVitals from './reportWebVitals';
-// import List from './pages/List';
+import List from './pages/List';
 import Detail from './pages/Detail';
-import App from './App';
+import {
+  QueryClient,
+  QueryClientProvider,
+} from 'react-query'
+import { ReactQueryDevtools } from 'react-query/devtools'
 import { ThemeProvider } from 'styled-components';
+import { RecoilRoot } from 'recoil';
 
+
+const queryClient = new QueryClient();
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
@@ -34,13 +41,18 @@ root.render(
         }
       }
     }}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<App />} />
-          <Route path="/detail" element={<Detail />} />
-          <Route path="/detail/:detailId" element={<Detail />} />
-        </Routes>
-      </BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <RecoilRoot>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<List />} />
+              <Route path="/detail" element={<Detail />} />
+              <Route path="/detail/:detailId" element={<Detail />} />
+            </Routes>
+          </BrowserRouter>
+        </RecoilRoot>
+        <ReactQueryDevtools />
+      </QueryClientProvider>
     </ThemeProvider>
   </React.StrictMode>
 );

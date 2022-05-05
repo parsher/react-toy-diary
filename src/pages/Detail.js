@@ -1,4 +1,5 @@
-import React, { useLayoutEffect, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useState } from 'react';
+import { useNavigate } from "react-router-dom";
 import { useParams } from 'react-router';
 import Button from "../components/Button";
 import Content from "../components/Content";
@@ -8,8 +9,13 @@ import Weather from '../components/Weather';
 import Title from '../components/Title';
 import Layout from '../layout/Layout';
 import StyledLink from '../components/StyledLink';
-import { Data } from '../api';
+import { useRecoilState } from 'recoil';
+import { userState } from '../store';
 import styled from 'styled-components';
+import { DiaryAPI } from '../api/diary';
+import { UserAPI } from '../api/user';
+import { clone } from '../utils';
+import { USER_SAVED_LIST_COUNT } from '../const';
 
 
 const FlexSpaceBetween = styled.div`
@@ -34,7 +40,6 @@ const ButtonArea = styled(FlexSpaceBetween)`
 `;
 
 const RightButtonArea = styled(FlexSpaceBetween)`
-    width: 130px;
 `;
 
 
@@ -52,33 +57,83 @@ const DetailContent = styled(Content)`
 
 
 export default function Detail() {
+    const navigate = useNavigate();
     const params = useParams();
-
-    const [data, setData] = useState({ title: '', content: '', weather: 'sun', mood: 'grin', dateTime: Date.now() });
+    const [user, setUser] = useRecoilState(userState);
+    const [data, setData] = useState({ title: '', content: '', weather: 'sun', mood: 'grin' });
     const [readOnly, setReadOnly] = useState(true);
 
-    useLayoutEffect(() => {
+    // 다시 렌더링될때 함수를 재사용하기 위해 useCallback을 사용함.
+    const fetchData = useCallback(async () => {
         const detailId = params.detailId;
-
-        setReadOnly(!!detailId);
-        if (!!detailId) {
-            const found = Data.list.find(({ id }) => id === detailId);
-            if (found) {
-                setData(found);
-            } else {
-                console.error('data not found')
+        if (detailId) {
+            const data = await DiaryAPI.get(detailId);
+            if (data) {
+                setData(data);
             }
+            setReadOnly(true);
+        } else {
+            setReadOnly(false);
         }
-    }, [params]);
+    }, [params, setData]);
 
+    useLayoutEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
     const setDataHandler = (target, value) => {
         setData({ ...data, [target]: value });
     };
 
+    const updateUserDiaryList = async (diaryList) => {
+        console.log('userDiaryList', diaryList);
+        const modified = await UserAPI.put(user.id, { ...user, diaryList });
+        setUser(modified);
+    }
+
+    const onClickSave = async () => {
+        let cloneDiaryList;
+        if (data.id) {
+            console.log('data', data);
+            const diary = await DiaryAPI.put(data.id, { ...data, userId: user.id });
+            const index = user.diaryList.findIndex(({ id }) => id === diary.id);
+            if (index >= 0) {
+                cloneDiaryList = clone(user.diaryList);
+                cloneDiaryList.splice(index, 1, diary);
+                await updateUserDiaryList(cloneDiaryList);
+            }
+        } else {
+            console.log('data', data);
+            const diary = await DiaryAPI.set({ ...data, userId: user.id });
+            cloneDiaryList = clone(user.diaryList);
+            if (cloneDiaryList.length === USER_SAVED_LIST_COUNT) {
+                cloneDiaryList.pop();
+            }
+            cloneDiaryList.unshift(diary);
+            await updateUserDiaryList(cloneDiaryList);
+        }
+
+        setReadOnly(true);
+    }
+
+    const onClickDelete = async () => {
+        if (data.id) {
+            await DiaryAPI.del(data.id);
+            navigate('/', { replace: true });
+        }
+    }
+
+    const onClickModify = () => {
+        setReadOnly(false);
+    }
+
+    const onClickCancel = () => {
+        setReadOnly(true);
+    }
+
     return (
         <Layout>
-            <DateTime dateTime={data.dateTime} />
+            <DateTime created={data.created} />
 
             <TitleArea>
                 <TitleBeforeArea>
@@ -95,12 +150,20 @@ export default function Detail() {
                     <DetailButton>목록</DetailButton>
                 </StyledLink>
                 {
-                    !readOnly && (
-                        <RightButtonArea>
-                            <DetailButton>취소</DetailButton>
-                            <DetailButton>저장</DetailButton>
-                        </RightButtonArea>
-                    )
+                    readOnly ?
+                        (
+                            <RightButtonArea>
+                                <DetailButton onClick={onClickDelete}>삭제</DetailButton>
+                                <DetailButton onClick={onClickModify}>수정</DetailButton>
+                            </RightButtonArea>
+                        )
+                        :
+                        (
+                            <RightButtonArea>
+                                <DetailButton onClick={onClickCancel}>취소</DetailButton>
+                                <DetailButton onClick={onClickSave}>저장</DetailButton>
+                            </RightButtonArea>
+                        )
                 }
             </ButtonArea>
         </Layout>
